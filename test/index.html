@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>leaflet-rotate.js</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+
+    <!-- Leaflet JS / CSS -->
+    <script src="https://unpkg.com/leaflet@1.9/dist/leaflet-src.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css">
+
+    <!-- Leaflet-Rotate -->
+    <script src="../dist/leaflet-rotate-src.js"></script>
+
+    <!-- include some miscellaneous -->
+    <!-- <script src="/misc/route.js"></script> -->
+    <!-- <script src="../misc/places.js"></script> -->
+    <!-- <script src="../misc/loremIpsum.js"></script> -->
+    <script src="../lib/debug.js"></script>
+
+    <style>
+        #map {
+            width: 100%;
+            height: 100vh;
+           
+        }
+
+        /* TODO: fix incorrect map corners position when map has some margin */
+        
+        * {
+            margin: 0; */
+            /* padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+	<input title="Set rotation angle" type="number" min="0" max="360" value="0" name="rho" id='rho_input' /><span id='rho'></span>
+    <div id="map"></div>
+    
+
+    <script>
+        var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            id: 'mapbox.streets',
+            maxZoom: 24,
+            maxNativeZoom: 18,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            // noWrap: true
+        });
+
+        var osm = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 24,
+            maxNativeZoom: 19,
+            attribution: '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            // noWrap: true
+        });
+
+        var map = L.map('map', {
+            zoom: 20,
+            layers: [esri],
+            zoomAnimation: false, /* DEBUG: L.Renderer._updateTransform() */
+            rotate: true,
+            rotateControl: {
+                closeOnZeroBearing: false,
+                // position: 'bottomleft',
+            },
+            bearing: 0,
+            // attributionControl: false,
+            // zoomControl: false,
+            
+        });
+
+        var marker; // Declare a variable to store the marker
+
+        // Declare variables to store the previous and current positions
+var previousPosition = null;
+
+// Function to update the map with the user's current position
+function updateMapWithUserLocation() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+            const userLatLng = [position.coords.latitude, position.coords.longitude];
+            map.setView(userLatLng, 18); // Set map center to user's location
+
+            // Calculate the bearing between previous and current positions
+            if (previousPosition !== null) {
+                const previousLatLng = previousPosition;
+                const currentLatLng = userLatLng;
+                const bearing = calculateBearing(previousLatLng, currentLatLng);
+                rhoInput.value = bearing;
+				console.log(bearing)
+            }
+
+            // Remove the previous marker if it exists
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            // Add a new marker at the user's location
+            marker = L.marker(userLatLng).addTo(map);
+
+            // Update the previous position
+            previousPosition = userLatLng;
+        }, function (error) {
+            console.error("Error getting user's location:", error);
+        });
+    } else {
+        console.error("Geolocation is not available in this browser.");
+    }
+}
+
+// Function to calculate the bearing between two LatLng points
+function calculateBearing(point1, point2) {
+	console.log(point1)
+	console.log(point2)
+    const lat1 = point1[0];
+    const lon1 = point1[1];
+    const lat2 = point2[0];
+    const lon2 = point2[1];
+
+    const y = Math.sin(lon2 - lon1) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+
+    const bearing = Math.atan2(y, x) * (180 / Math.PI);
+    return (bearing + 360) % 360; // Ensure the bearing is within the range [0, 360)
+}
+
+// Call the updateMapWithUserLocation function every 5 seconds
+setInterval(updateMapWithUserLocation, 5000);
+
+var rhoInput = document.getElementById('rho_input');
+rhoInput.addEventListener('change', L.Rotate.rotate.bind(this));
+        // Rest of your code here...
+		L.Rotate.debug(map);
+    </script>
+
+</body>
+
+</html>
